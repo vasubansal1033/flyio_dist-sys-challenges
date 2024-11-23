@@ -3,20 +3,25 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"sync"
 
 	maelstrom "github.com/jepsen-io/maelstrom/demo/go"
 )
 
 type Server struct {
-	Node              *maelstrom.Node
-	Values            []int
+	Node *maelstrom.Node
+
+	Messages   []int
+	MessagesMu sync.RWMutex
+
 	NeighbouringNodes []string
+	NeighbourMutex    sync.Mutex
 }
 
 func NewServer() *Server {
 	return &Server{
 		Node:              maelstrom.NewNode(),
-		Values:            make([]int, 0),
+		Messages:          make([]int, 0),
 		NeighbouringNodes: make([]string, 0),
 	}
 }
@@ -36,9 +41,11 @@ func (s *Server) HandleBroadcast(msg maelstrom.Message) error {
 		return err
 	}
 
-	value := body.Message
+	message := body.Message
 
-	s.Values = append(s.Values, value)
+	s.MessagesMu.Lock()
+	s.Messages = append(s.Messages, message)
+	s.MessagesMu.Unlock()
 
 	return s.Node.Reply(msg, BroadcastOutput{
 		Type: "broadcast_ok",
@@ -52,7 +59,10 @@ func (s *Server) HandleRead(msg maelstrom.Message) error {
 	}
 
 	body["type"] = "read_ok"
-	body["messages"] = s.Values
+
+	s.MessagesMu.RLock()
+	body["messages"] = s.Messages
+	s.MessagesMu.RUnlock()
 
 	return s.Node.Reply(msg, body)
 }
@@ -72,7 +82,9 @@ func (s *Server) HandleTopology(msg maelstrom.Message) error {
 		return err
 	}
 
+	s.NeighbourMutex.Lock()
 	s.NeighbouringNodes = body.Topology[s.Node.ID()]
+	s.NeighbourMutex.Unlock()
 
 	topologyOutput := TopologyOutput{
 		Type: "topology_ok",
