@@ -38,3 +38,14 @@ Also, an easy optimization is to keep track of the messages that have been propa
 ### 3c: Fault Tolerant Broadcast
 
 Our solution from the previous exercise is already fault tolerant because messages are re-sent if they are not acknowledged.
+
+### 3d: Efficient Broadcast
+
+In order to achieve lower latency and a higher number of messages per operation, a good idea is to use a different topology from the one that maelstrom suggests us. The idea is that we want to reduce the maximum distance between two nodes in the graph, and also reduce the amount of cycles (to avoid duplication). A topology that satisfies the desired property is one in which there is only one "master" node that can communicate with everybody, and all other nodes are "slaves" that can only communicate with the master. This topology technically provides eventual consistency, because if in the end all network partitions are eliminated, all nodes are able to sync with each other.
+This configuration is able to achieve a median latency below 270 ms and a maximum latency below 390 ms on my PC, as well as a number of messages per operations of about 12.
+
+Of course, in a real-world system, this configuration would not be ideal because it is not fault tolerant, and also puts too much pressure on a single node. One possible fix would be to subdivide the graph into N clusters, and elect one master node in each cluster. All master nodes could then be able to communicate with each other, while slaves would only be able to send and receive messages from the master of their cluster.
+
+### 3e: Efficient Broadcast, Part II
+
+Our previous system already achieves all the desired performance metrics.
