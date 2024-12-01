@@ -49,3 +49,8 @@ Of course, in a real-world system, this configuration would not be ideal because
 ### 3e: Efficient Broadcast, Part II
 
 Our previous system already achieves all the desired performance metrics.
+
+## 4: Grow-Only Counter
+
+Having access to a sequential key-value store, it's quite easy to implement a grow-only counter. In fact, we can associate to each server a key in the key-value store (corresponding to the server's ID) and the value associated with this key will simply represent the counter of the server. Then, whenever you want to read the total counter, you can simply query the key-value store to get the partial counts from all the servers, and then add them up to get the result.
+One problem with this approach is the following. Suppose a client sends an `add` RPC to server 1, and immediately after sends a `read` RPC to server 2. If server 1 was slow to communicate with the key-value store, the increment would not be registered. A solution to this problem would be to have each server read the counters for other servers not directly from the key-value store, but from the other servers themselves, by sending them an RPC. However, this drastically increases the latency of the system, since the latency for a client request would be bound by the maximum latency for the connection between two servers.
